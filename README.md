@@ -50,6 +50,7 @@ Model diperoleh dari Roboflow Universe dan dimuat menggunakan Roboflow Inference
 | python-dotenv | Membaca konfigurasi dari file `.env` |
 | Supervision | Mengolah hasil deteksi dan menggambar anotasi |
 | OpenCV | Membaca, memproses, dan menyimpan gambar |
+| Streamlit | Antarmuka dashboard web interaktif |
 | YOLOv11 | Arsitektur object detection yang digunakan oleh model |
 
 ## 📂 Struktur Proyek
@@ -57,6 +58,9 @@ Model diperoleh dari Roboflow Universe dan dimuat menggunakan Roboflow Inference
 ```text
 Mango-Ripeness-Detection/
 │
+├── .streamlit/
+│   └── config.toml       # Konfigurasi batas upload file Streamlit
+├── app.py                # Dashboard web interaktif (Streamlit)
 ├── cek_model.py          # Memuat dan memeriksa model pretrained
 ├── uji_model.py          # Menjalankan deteksi kematangan mangga
 ├── images/               # Gambar input untuk inference
@@ -199,6 +203,19 @@ Secara umum, proses deteksi meliputi:
 4. Mengidentifikasi kelas kematangan dan confidence score.
 5. Menggambar bounding box dan label pada objek yang terdeteksi.
 6. Menyimpan setiap hasil anotasi di `hasil_deteksi/` dengan nama `<nama-gambar>_hasil.<ekstensi>`.
+
+### 4. Menjalankan Dashboard Web
+
+Selain CLI, pengujian dapat dijalankan melalui dashboard web interaktif:
+
+````bash
+streamlit run app.py
+````
+
+Fitur dashboard:
+- Unggah hingga 5 berkas citra sekaligus (JPG, JPEG, PNG, WebP dengan batas maksimal 2MB per file).
+- Tampilan citra beranotasi bounding box yang otomatis di-resize secara proporsional.
+- Kartu hasil prediksi tingkat kematangan (*Ripe*, *Partially Ripe*, *Unripe*) beserta persentase *confidence score*.
 
 ## 📊 Hasil Deteksi
 
