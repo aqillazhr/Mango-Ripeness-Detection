@@ -47,8 +47,10 @@ Model diperoleh dari Roboflow Universe dan dimuat menggunakan Roboflow Inference
 |---|---|
 | Python 3.12 | Bahasa pemrograman utama |
 | Roboflow Inference | Memuat dan menjalankan model pretrained |
+| python-dotenv | Membaca konfigurasi dari file `.env` |
 | Supervision | Mengolah hasil deteksi dan menggambar anotasi |
 | OpenCV | Membaca, memproses, dan menyimpan gambar |
+| Streamlit | Antarmuka dashboard web interaktif |
 | YOLOv11 | Arsitektur object detection yang digunakan oleh model |
 
 ## 📂 Struktur Proyek
@@ -56,10 +58,13 @@ Model diperoleh dari Roboflow Universe dan dimuat menggunakan Roboflow Inference
 ```text
 Mango-Ripeness-Detection/
 │
-├── .venv/                # Virtual environment (tidak diunggah ke GitHub)
-│
+├── .streamlit/
+│   └── config.toml       # Konfigurasi batas upload file Streamlit
+├── app.py                # Dashboard web interaktif (Streamlit)
 ├── cek_model.py          # Memuat dan memeriksa model pretrained
 ├── uji_model.py          # Menjalankan deteksi kematangan mangga
+├── images/               # Gambar input untuk inference
+├── hasil_deteksi/        # Hasil anotasi, dibuat otomatis
 ├── requirements.txt      # Daftar dependensi Python
 ├── README.md             # Dokumentasi proyek
 ├── .gitignore            # Daftar file yang diabaikan Git
@@ -67,9 +72,10 @@ Mango-Ripeness-Detection/
 ```
 
 **Catatan:**
-- Direktori `.venv/` merupakan virtual environment yang dibuat secara lokal setelah proses instalasi. Folder ini tidak disertakan dalam repository GitHub karena setiap pengguna perlu membuat virtual environment masing-masing menggunakan dependensi yang tercantum dalam requirements.txt
-- File `hasil_deteksi.jpg` akan dibuat secara otomatis setelah proses deteksi dijalankan dan tidak disertakan dalam repository.
-- File `test.webp` disediakan sebagai gambar contoh agar pengguna dapat langsung mencoba model tanpa harus menyiapkan gambar sendiri.
+- Direktori `.venv/` digunakan sebagai virtual environment dan tidak disertakan dalam repository.
+- Letakkan gambar yang akan diprediksi di dalam folder `images/`. Script menerima JPG, JPEG, PNG, dan WebP.
+- Folder `hasil_deteksi/` dibuat otomatis untuk menyimpan hasil prediksi dan dapat dipakai untuk melewati gambar yang sudah selesai diproses.
+- `test.webp` tetap tersedia sebagai file contoh, tetapi `uji_model.py` saat ini membaca gambar dari folder `images/`.
 
 ## ⚙️ Instalasi dan Konfigurasi
 
@@ -118,10 +124,17 @@ Pastikan virtual environment sudah aktif, kemudian jalankan:
 
 ```bash
 python -m pip install --upgrade pip
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 ```
 
 Perintah tersebut akan menginstal seluruh library yang dibutuhkan berdasarkan `requirements.txt`.
+
+Di Windows PowerShell, gunakan interpreter `.venv` secara langsung agar paket terpasang di environment proyek:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
 
 ### 4. Konfigurasi Roboflow API Key
 
@@ -129,45 +142,25 @@ Proyek ini memerlukan Roboflow Private API Key untuk mengambil model pretrained 
 
 API Key dapat diperoleh melalui [Roboflow Dashboard](https://app.roboflow.com/).
 
-Atur API Key sebagai environment variable agar dapat digunakan oleh aplikasi.
+Simpan API Key dan lokasi cache di file `.env` pada folder utama proyek. Script memuat file ini menggunakan `python-dotenv`.
 
-**macOS / Linux:**
-
-```bash
-export ROBOFLOW_API_KEY="YOUR_PRIVATE_API_KEY"
+```dotenv
+ROBOFLOW_API_KEY=YOUR_PRIVATE_API_KEY
+MODEL_CACHE_DIR=C:/Users/nama-pengguna/.cache/roboflow
+INFERENCE_HOME=C:/Users/nama-pengguna/.cache/roboflow
 ```
 
-**Windows (PowerShell):**
+Ganti `YOUR_PRIVATE_API_KEY` dan `nama-pengguna` dengan nilai milik Anda. Di macOS/Linux, sesuaikan path cache, misalnya `/home/nama-pengguna/.cache/roboflow`, untuk kedua variabel cache.
+
+Pada Windows, buat folder cache jika belum ada:
 
 ```powershell
-$env:ROBOFLOW_API_KEY="YOUR_PRIVATE_API_KEY"
+New-Item -ItemType Directory -Force -Path "$HOME\.cache\roboflow"
 ```
 
-Ganti `YOUR_PRIVATE_API_KEY` dengan Private API Key milik masing-masing pengguna.
+**Penting:** Jangan menuliskan Private API Key di kode atau mengunggah `.env` ke GitHub. File `.env` sudah diabaikan oleh `.gitignore`.
 
-**Penting:** Jangan menuliskan Private API Key secara langsung di dalam kode atau mengunggahnya ke GitHub. Environment variable perlu diatur kembali ketika membuka sesi terminal baru.
-
-### 5. Konfigurasi Model Cache
-
-Model yang diunduh akan disimpan dalam direktori cache lokal sehingga dapat digunakan kembali pada eksekusi berikutnya.
-
-**macOS / Linux:**
-
-```bash
-export MODEL_CACHE_DIR="$HOME/.cache/roboflow"
-export INFERENCE_HOME="$MODEL_CACHE_DIR"
-mkdir -p "$MODEL_CACHE_DIR"
-```
-
-**Windows (PowerShell):**
-
-```powershell
-$env:MODEL_CACHE_DIR="$HOME\.cache\roboflow"
-$env:INFERENCE_HOME=$env:MODEL_CACHE_DIR
-New-Item -ItemType Directory -Force -Path $env:MODEL_CACHE_DIR
-```
-
-Konfigurasi cache ini membantu mempertahankan file model yang telah diunduh sehingga tidak perlu mengunduhnya kembali setiap kali aplikasi dijalankan, selama file cache masih tersedia.
+Pengaturan `MODEL_CACHE_DIR` dan `INFERENCE_HOME` pada `.env` membuat file model tersimpan di cache lokal agar dapat digunakan kembali pada eksekusi berikutnya.
 
 ## 🚀 Cara Menggunakan
 
@@ -183,45 +176,20 @@ Script ini digunakan untuk memeriksa API Key, mengambil model pretrained apabila
 
 ### 2. Menyiapkan Gambar Input
 
-Repository ini sudah menyediakan gambar contoh bernama `test.webp` yang dapat langsung digunakan untuk mencoba deteksi kematangan mangga.
+Masukkan gambar yang ingin diprediksi ke folder `images/`. File contoh `test.webp` dapat digunakan dengan menyalinnya ke folder tersebut. Script memilih gambar berdasarkan urutan nama file dan hanya menggunakan format JPG, JPEG, PNG, atau WebP.
 
-Pastikan konfigurasi pada `uji_model.py` menggunakan:
-
-```python
-IMAGE_PATH = "test.webp"
-```
-
-Dengan konfigurasi tersebut, pengguna dapat langsung menjalankan pengujian menggunakan gambar yang telah disediakan tanpa perlu menyiapkan gambar tambahan.
-
-**Menggunakan Gambar Sendiri**
-
-Pengguna juga dapat menggunakan gambar mangga milik sendiri sebagai input.
-
-Langkah-langkahnya:
-
-1. Letakkan gambar yang ingin diuji di dalam direktori proyek.
-2. Buka file `uji_model.py`.
-3. Ubah nilai `IMAGE_PATH` sesuai dengan nama file gambar yang digunakan.
-
-Sebagai contoh, apabila gambar yang ingin digunakan bernama `mango_sample.jpg`, ubah konfigurasi menjadi:
+Jumlah gambar maksimal yang diproses pada satu kali eksekusi diatur lewat variabel berikut pada `uji_model.py`:
 
 ```python
-IMAGE_PATH = "mango_sample.jpg"
+IMAGE_DIR = Path("images")
+NUM_IMAGES_TO_INFER = 2
 ```
 
-Pengguna juga dapat menggunakan gambar dengan format lain, misalnya:
-
-```python
-IMAGE_PATH = "test2.avif"
-```
-
-Beberapa format gambar yang dapat digunakan dalam proyek ini meliputi JPG, JPEG, PNG, WebP, dan AVIF. Dukungan format bergantung pada kemampuan decoding OpenCV yang terpasang di lingkungan pengguna.
-
-Dengan demikian, pengguna bebas menggunakan gambar contoh yang tersedia maupun menggantinya dengan gambar mangga sendiri.
+Ubah `NUM_IMAGES_TO_INFER` untuk menentukan kuota gambar yang belum pernah diproses pada setiap eksekusi. Script melewati gambar jika hasilnya sudah ada di `hasil_deteksi/`, lalu mencari gambar berikutnya sampai kuota tercapai. Jika semua gambar sudah memiliki hasil, script selesai tanpa memuat model.
 
 ### 3. Menjalankan Deteksi
 
-Setelah gambar input ditentukan, jalankan perintah:
+Setelah gambar tersedia di `images/` dan `.env` telah diisi, jalankan:
 
 ```bash
 python uji_model.py
@@ -230,12 +198,24 @@ python uji_model.py
 Secara umum, proses deteksi meliputi:
 
 1. Memuat model pretrained CARABAO.
-2. Membaca gambar input berdasarkan konfigurasi `IMAGE_PATH`.
-3. Menjalankan object detection secara lokal.
-4. Mengidentifikasi kelas kematangan yang diprediksi.
-5. Mengambil confidence score hasil prediksi.
-6. Menggambar bounding box dan label pada objek yang terdeteksi.
-7. Menyimpan hasil anotasi sebagai `hasil_deteksi.jpg`.
+2. Memilih hingga `NUM_IMAGES_TO_INFER` gambar yang belum memiliki hasil.
+3. Membaca gambar dari folder `images/` dan menjalankan object detection secara lokal.
+4. Mengidentifikasi kelas kematangan dan confidence score.
+5. Menggambar bounding box dan label pada objek yang terdeteksi.
+6. Menyimpan setiap hasil anotasi di `hasil_deteksi/` dengan nama `<nama-gambar>_hasil.<ekstensi>`.
+
+### 4. Menjalankan Dashboard Web
+
+Selain CLI, pengujian dapat dijalankan melalui dashboard web interaktif:
+
+````bash
+streamlit run app.py
+````
+
+Fitur dashboard:
+- Unggah hingga 5 berkas citra sekaligus (JPG, JPEG, PNG, WebP dengan batas maksimal 2MB per file).
+- Tampilan citra beranotasi bounding box yang otomatis di-resize secara proporsional.
+- Kartu hasil prediksi tingkat kematangan (*Ripe*, *Partially Ripe*, *Unripe*) beserta persentase *confidence score*.
 
 ## 📊 Hasil Deteksi
 
@@ -247,7 +227,7 @@ Contoh label prediksi:
 - `Partially Ripe`
 - `Ripe`
 
-Gambar hasil deteksi disimpan dengan nama `hasil_deteksi.jpg` di direktori proyek. File tersebut akan diperbarui ketika script dijalankan kembali.
+Gambar hasil deteksi disimpan terpisah di folder `hasil_deteksi/`. Jika file hasil untuk suatu gambar sudah ada, gambar input tersebut dilewati pada eksekusi berikutnya.
 
 ## 🔒 Catatan
 

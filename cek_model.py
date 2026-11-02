@@ -1,4 +1,8 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from inference import get_model
 
 # 1. Pastikan API Key tersedia
