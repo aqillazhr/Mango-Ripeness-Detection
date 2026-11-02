@@ -1,18 +1,22 @@
 # 🥭 Mango Ripeness Detection
 
-Aplikasi **Object Detection untuk mendeteksi tingkat kematangan buah mangga** menggunakan model YOLO dari Roboflow. Proyek ini menggunakan Roboflow Inference untuk menjalankan prediksi secara lokal di komputer.
+Proyek **Computer Vision untuk mendeteksi dan mengklasifikasikan tingkat kematangan buah mangga** menggunakan model pretrained CARABAO Ripeness Level yang dipublikasikan oleh MangoSort AI melalui Roboflow Universe.
 
-## 📌 Project Overview
+Model ini menggunakan arsitektur YOLOv11 dan memiliki tiga kelas deteksi, yaitu *Unripe* (mentah), *Partially Ripe* (setengah matang), dan *Ripe* (matang).
 
-Proyek ini bertujuan untuk mendeteksi dan mengklasifikasikan tingkat kematangan buah mangga berdasarkan citra digital.
+Proyek ini berfokus pada implementasi dan pengujian model pretrained tersebut menggunakan Roboflow Inference. Proses inferensi gambar dijalankan secara lokal di komputer pengguna (*local inference*).
 
-Model mendeteksi objek mangga sekaligus memberikan bounding box dan label kelas kematangan pada setiap objek yang teridentifikasi.
+## 📌 Gambaran Proyek
 
-Pengujian dilakukan menggunakan model pretrained dari Roboflow Universe, yaitu **CARABAO Ripeness Level**.
+Proyek ini bertujuan untuk mengimplementasikan model *object detection* dalam mengenali objek mangga sekaligus mengidentifikasi tingkat kematangannya berdasarkan citra digital.
 
-## 🎯 Detection Classes
+Model menghasilkan prediksi berupa lokasi objek (*bounding box*), label kelas kematangan, dan nilai *confidence score*.
 
-Model memiliki tiga kelas tingkat kematangan:
+**Catatan:** Model yang digunakan merupakan model pretrained dari pihak ketiga. Proyek ini tidak mengklaim pengembangan maupun pelatihan model CARABAO dari awal. Fokus proyek adalah implementasi dan pengujian model yang telah tersedia.
+
+## 🎯 Kelas Deteksi
+
+Model menyediakan tiga kelas tingkat kematangan:
 
 | Class | Description |
 |---|---|
@@ -20,65 +24,79 @@ Model memiliki tiga kelas tingkat kematangan:
 | `Partially Ripe` | Mangga setengah matang |
 | `Ripe` | Mangga matang |
 
-## 🤖 Pretrained Model
+## 🤖 Model Pretrained
 
-Model yang digunakan:
+Model yang digunakan dalam proyek ini:
 
-- **Model Name:** CARABAO Ripeness Level
-- **Model ID:** `carabao-ripeness-level-0x9me/19`
-- **Architecture:** YOLOv11
-- **Task:** Object Detection
-- **Platform:** Roboflow Universe
-
-**Model Source:** [CARABAO Ripeness Level – Roboflow Universe](https://universe.roboflow.com/mangosort-ai/carabao-ripeness-level-0x9me)
-
-Model diunduh melalui Roboflow Inference dan disimpan dalam cache lokal. Setelah model tersedia, proses inferensi gambar dilakukan di komputer pengguna, bukan melalui Serverless Cloud API.
-
-## 🛠️ Technologies Used
-
-| Technology | Purpose |
+| Informasi | Detail |
 |---|---|
-| Python 3.12 | Programming language |
-| Roboflow Inference | Loading and running the pretrained model |
-| Supervision | Processing detection results and drawing bounding boxes |
-| OpenCV | Image processing and saving detection results |
-| YOLOv11 | Object detection architecture |
+| Nama Model | CARABAO Ripeness Level |
+| Model ID | `carabao-ripeness-level-0x9me/19` |
+| Arsitektur | YOLOv11 |
+| Tugas | Object Detection |
+| Platform | Roboflow Universe |
+| Publisher | MangoSort AI |
 
-## 📂 Project Structure
+**Sumber Model:** [CARABAO Ripeness Level – Roboflow Universe](https://universe.roboflow.com/mangosort-ai/carabao-ripeness-level-0x9me)
+
+Model diperoleh dari Roboflow Universe dan dimuat menggunakan Roboflow Inference. Setelah model berhasil diunduh dan tersimpan dalam cache lokal, proses inferensi gambar dilakukan langsung di komputer pengguna, bukan melalui Serverless Cloud API.
+
+## 🛠️ Teknologi yang Digunakan
+
+| Teknologi | Kegunaan |
+|---|---|
+| Python 3.12 | Bahasa pemrograman utama |
+| Roboflow Inference | Memuat dan menjalankan model pretrained |
+| Supervision | Mengolah hasil deteksi dan menggambar anotasi |
+| OpenCV | Membaca, memproses, dan menyimpan gambar |
+| YOLOv11 | Arsitektur object detection yang digunakan oleh model |
+
+## 📂 Struktur Proyek
 
 ```text
-mangga/
+Mango-Ripeness-Detection/
 │
-├── .venv/                # Python virtual environment (not uploaded)
-│
-├── cek_model.py          # Load and verify the pretrained model
-├── uji_model.py          # Run mango ripeness detection
-├── requirements.txt      # Python dependencies
-├── README.md             # Project documentation
-├── .gitignore            # Git ignored files
-│
-├── test.webp             # Example test image (optional)
-└── hasil_deteksi.jpg     # Detection output (generated)
+├── cek_model.py          # Memuat dan memeriksa model pretrained
+├── uji_model.py          # Menjalankan deteksi kematangan mangga
+├── requirements.txt      # Daftar dependensi Python
+├── README.md             # Dokumentasi proyek
+├── .gitignore            # Daftar file yang diabaikan Git
+└── test.webp             # Contoh gambar untuk pengujian
 ```
 
-## ⚙️ Installation and Setup
+**Catatan:**
+- Direktori `.venv/` digunakan sebagai virtual environment dan tidak disertakan dalam repository.
+- File `hasil_deteksi.jpg` akan dibuat secara otomatis setelah proses deteksi dijalankan dan tidak disertakan dalam repository.
+- File `test.webp` disediakan sebagai gambar contoh agar pengguna dapat langsung mencoba model tanpa harus menyiapkan gambar sendiri.
 
-### 1. Clone the Repository
+## ⚙️ Instalasi dan Konfigurasi
+
+### 1. Clone Repository
+
+Unduh repository ke komputer menggunakan perintah:
 
 ```bash
-git clone <YOUR_GITHUB_REPOSITORY_URL>
-cd mangga
+git clone https://github.com/aqillazhr/Mango-Ripeness-Detection.git
+cd Mango-Ripeness-Detection
 ```
 
-### 2. Create a Virtual Environment
+### 2. Membuat Virtual Environment
 
-Make sure Python 3.12 is installed.
+Pastikan Python 3.12 telah terinstal.
+
+**macOS / Linux:**
 
 ```bash
 python3.12 -m venv .venv
 ```
 
-Activate the virtual environment:
+**Windows (PowerShell):**
+
+```powershell
+py -3.12 -m venv .venv
+```
+
+Setelah virtual environment berhasil dibuat, aktifkan dengan perintah berikut.
 
 **macOS / Linux:**
 
@@ -92,20 +110,24 @@ source .venv/bin/activate
 .venv\Scripts\Activate.ps1
 ```
 
-### 3. Install Dependencies
+### 3. Menginstal Dependencies
+
+Pastikan virtual environment sudah aktif, kemudian jalankan:
 
 ```bash
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 4. Configure Roboflow API Key
+Perintah tersebut akan menginstal seluruh library yang dibutuhkan berdasarkan `requirements.txt`.
 
-A Private API Key is required to retrieve the pretrained model from Roboflow.
+### 4. Konfigurasi Roboflow API Key
 
-Obtain your API Key from [Roboflow Dashboard](https://app.roboflow.com).
+Proyek ini memerlukan Roboflow Private API Key untuk mengambil model pretrained dari Roboflow.
 
-Set the API Key as an environment variable.
+API Key dapat diperoleh melalui [Roboflow Dashboard](https://app.roboflow.com/).
+
+Atur API Key sebagai environment variable agar dapat digunakan oleh aplikasi.
 
 **macOS / Linux:**
 
@@ -119,11 +141,13 @@ export ROBOFLOW_API_KEY="YOUR_PRIVATE_API_KEY"
 $env:ROBOFLOW_API_KEY="YOUR_PRIVATE_API_KEY"
 ```
 
-Do not hardcode or upload your Private API Key to GitHub.
+Ganti `YOUR_PRIVATE_API_KEY` dengan Private API Key milik masing-masing pengguna.
 
-### 5. Configure Model Cache
+**Penting:** Jangan menuliskan Private API Key secara langsung di dalam kode atau mengunggahnya ke GitHub. Environment variable perlu diatur kembali ketika membuka sesi terminal baru.
 
-To store downloaded model files in a persistent local directory:
+### 5. Konfigurasi Model Cache
+
+Model yang diunduh akan disimpan dalam direktori cache lokal sehingga dapat digunakan kembali pada eksekusi berikutnya.
 
 **macOS / Linux:**
 
@@ -133,71 +157,115 @@ export INFERENCE_HOME="$MODEL_CACHE_DIR"
 mkdir -p "$MODEL_CACHE_DIR"
 ```
 
-## 🚀 Usage
+**Windows (PowerShell):**
 
-### 1. Verify Model Loading
+```powershell
+$env:MODEL_CACHE_DIR="$HOME\.cache\roboflow"
+$env:INFERENCE_HOME=$env:MODEL_CACHE_DIR
+New-Item -ItemType Directory -Force -Path $env:MODEL_CACHE_DIR
+```
 
-Run the following command:
+Konfigurasi cache ini membantu mempertahankan file model yang telah diunduh sehingga tidak perlu mengunduhnya kembali setiap kali aplikasi dijalankan, selama file cache masih tersedia.
+
+## 🚀 Cara Menggunakan
+
+### 1. Memeriksa Model
+
+Sebelum menjalankan deteksi, pastikan model berhasil dimuat dengan menjalankan:
 
 ```bash
 python cek_model.py
 ```
 
-This script checks the API Key, retrieves the pretrained model, and verifies that the model can be loaded successfully.
+Script ini digunakan untuk memeriksa API Key, mengambil model pretrained apabila belum tersedia dalam cache, dan memastikan model berhasil dimuat.
 
-### 2. Prepare a Test Image
+### 2. Menyiapkan Gambar Input
 
-Place a mango image in the project directory.
+Repository ini sudah menyediakan gambar contoh bernama `test.webp` yang dapat langsung digunakan untuk mencoba deteksi kematangan mangga.
 
-Update the image filename in `uji_model.py`:
+Pastikan konfigurasi pada `uji_model.py` menggunakan:
 
 ```python
 IMAGE_PATH = "test.webp"
 ```
 
-The application supports image formats readable by OpenCV, including JPG, PNG, and WebP.
+Dengan konfigurasi tersebut, pengguna dapat langsung menjalankan pengujian menggunakan gambar yang telah disediakan tanpa perlu menyiapkan gambar tambahan.
 
-### 3. Run Detection
+**Menggunakan Gambar Sendiri**
 
-Execute:
+Pengguna juga dapat menggunakan gambar mangga milik sendiri sebagai input.
+
+Langkah-langkahnya:
+
+1. Letakkan gambar yang ingin diuji di dalam direktori proyek.
+2. Buka file `uji_model.py`.
+3. Ubah nilai `IMAGE_PATH` sesuai dengan nama file gambar yang digunakan.
+
+Sebagai contoh, apabila gambar yang ingin digunakan bernama `mango_sample.jpg`, ubah konfigurasi menjadi:
+
+```python
+IMAGE_PATH = "mango_sample.jpg"
+```
+
+Pengguna juga dapat menggunakan gambar dengan format lain, misalnya:
+
+```python
+IMAGE_PATH = "test2.avif"
+```
+
+Beberapa format gambar yang dapat digunakan dalam proyek ini meliputi JPG, JPEG, PNG, WebP, dan AVIF. Dukungan format bergantung pada kemampuan decoding OpenCV yang terpasang di lingkungan pengguna.
+
+Dengan demikian, pengguna bebas menggunakan gambar contoh yang tersedia maupun menggantinya dengan gambar mangga sendiri.
+
+### 3. Menjalankan Deteksi
+
+Setelah gambar input ditentukan, jalankan perintah:
 
 ```bash
 python uji_model.py
 ```
 
-The program will:
-1. Load the pretrained CARABAO model.
-2. Read the input image.
-3. Perform object detection locally.
-4. Identify the predicted ripeness class.
-5. Calculate the confidence score.
-6. Draw bounding boxes and labels.
-7. Save the annotated image as `hasil_deteksi.jpg`.
+Secara umum, proses deteksi meliputi:
 
-## 📊 Detection Output
+1. Memuat model pretrained CARABAO.
+2. Membaca gambar input berdasarkan konfigurasi `IMAGE_PATH`.
+3. Menjalankan object detection secara lokal.
+4. Mengidentifikasi kelas kematangan yang diprediksi.
+5. Mengambil confidence score hasil prediksi.
+6. Menggambar bounding box dan label pada objek yang terdeteksi.
+7. Menyimpan hasil anotasi sebagai `hasil_deteksi.jpg`.
 
-The output image contains bounding boxes around detected mangoes, along with their predicted ripeness classes and confidence scores.
+## 📊 Hasil Deteksi
 
-Example output labels:
+Hasil deteksi berupa gambar yang telah diberi anotasi *bounding box*, label kelas kematangan, dan *confidence score* untuk setiap objek mangga yang berhasil dideteksi.
+
+Contoh label prediksi:
 
 - `Unripe`
 - `Partially Ripe`
 - `Ripe`
 
-## 🔒 Notes
+Gambar hasil deteksi disimpan dengan nama `hasil_deteksi.jpg` di direktori proyek. File tersebut akan diperbarui ketika script dijalankan kembali.
 
-- An internet connection and Roboflow Private API Key are required when retrieving the model for the first time.
-- Model files are stored in the local cache directory.
-- Image inference is performed locally using Roboflow Inference.
-- The `.venv` directory, API Key, local cache, and generated output files should not be committed to GitHub.
-- Model predictions may vary depending on image quality, lighting, camera angle, and mango variety.
+## 🔒 Catatan
 
-## 📚 References
+- Koneksi internet dan Roboflow Private API Key diperlukan ketika model harus diambil dari Roboflow untuk pertama kali.
+- Model yang telah diunduh disimpan dalam direktori cache lokal.
+- Setelah model tersedia secara lokal, inferensi gambar dilakukan menggunakan Roboflow Inference tanpa mengirim gambar ke Serverless Cloud API.
+- Direktori `.venv/`, API Key, cache lokal, dan file hasil deteksi tidak perlu diunggah ke repository.
+- Hasil prediksi dapat dipengaruhi oleh kualitas gambar, pencahayaan, sudut pengambilan gambar, dan varietas mangga.
+- Penggunaan model tetap mengikuti lisensi dan ketentuan atribusi dari sumber model aslinya.
+
+## 📚 Referensi
 
 - [CARABAO Ripeness Level – Roboflow Universe](https://universe.roboflow.com/mangosort-ai/carabao-ripeness-level-0x9me)
 - [Roboflow Inference Documentation](https://inference.roboflow.com/)
 - [Supervision Documentation](https://supervision.roboflow.com/)
 
-## 📄 Model Attribution
+## 📄 Atribusi Model
 
-The pretrained model is sourced from MangoSort AI through Roboflow Universe. Refer to the original model page for its license and attribution requirements.
+Model CARABAO Ripeness Level yang digunakan dalam proyek ini dipublikasikan oleh **MangoSort AI** melalui Roboflow Universe.
+
+Model tersebut merupakan model pretrained dari pihak ketiga yang digunakan untuk kebutuhan implementasi dan pengujian deteksi kematangan mangga. Proyek ini tidak mengklaim kepemilikan atau pengembangan model tersebut.
+
+Seluruh hak, lisensi, dan ketentuan penggunaan model mengikuti informasi yang ditetapkan oleh publisher pada halaman model aslinya.
