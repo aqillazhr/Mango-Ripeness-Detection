@@ -56,6 +56,8 @@ Model diperoleh dari Roboflow Universe dan dimuat menggunakan Roboflow Inference
 ```text
 Mango-Ripeness-Detection/
 │
+├── .venv/                # Virtual environment (tidak diunggah ke GitHub)
+│
 ├── cek_model.py          # Memuat dan memeriksa model pretrained
 ├── uji_model.py          # Menjalankan deteksi kematangan mangga
 ├── requirements.txt      # Daftar dependensi Python
@@ -65,7 +67,7 @@ Mango-Ripeness-Detection/
 ```
 
 **Catatan:**
-- Direktori `.venv/` digunakan sebagai virtual environment dan tidak disertakan dalam repository.
+- Direktori `.venv/` merupakan virtual environment yang dibuat secara lokal setelah proses instalasi. Folder ini tidak disertakan dalam repository GitHub karena setiap pengguna perlu membuat virtual environment masing-masing menggunakan dependensi yang tercantum dalam requirements.txt
 - File `hasil_deteksi.jpg` akan dibuat secara otomatis setelah proses deteksi dijalankan dan tidak disertakan dalam repository.
 - File `test.webp` disediakan sebagai gambar contoh agar pengguna dapat langsung mencoba model tanpa harus menyiapkan gambar sendiri.
 
