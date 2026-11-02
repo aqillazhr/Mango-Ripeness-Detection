@@ -1,21 +1,23 @@
 import os
 from pathlib import Path
-
+import cv2
+import numpy as np
 from dotenv import load_dotenv
 
 load_dotenv()
 
-import cv2
-import supervision as sv
-from inference import get_model
+from inference_sdk import InferenceHTTPClient, InferenceConfiguration
 
 # 1. Konfigurasi
 API_KEY = os.getenv("ROBOFLOW_API_KEY")
-MODEL_ID = "carabao-ripeness-level-0x9me/19"
+MODEL_ID = "mango-aiyie/1"
 IMAGE_DIR = Path("images")
 NUM_IMAGES_TO_INFER = 5
 OUTPUT_DIR = Path("results")
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+
+if not API_KEY:
+    raise ValueError("ROBOFLOW_API_KEY belum terbaca di file .env!")
 
 if not IMAGE_DIR.is_dir():
     raise FileNotFoundError(f"Folder gambar tidak ditemukan: {IMAGE_DIR}")
@@ -49,25 +51,61 @@ if not image_paths:
     print("Semua gambar sudah memiliki hasil inference. Tidak ada yang diproses.")
     raise SystemExit(0)
 
-if not API_KEY:
-    raise ValueError("ROBOFLOW_API_KEY belum terbaca!")
-
-# 2. Load model CARABAO
-print("Memuat model CARABAO...")
-
-model = get_model(
-    model_id=MODEL_ID,
-    api_key=API_KEY
+# 2. Inisialisasi Klien Model Roboflow
+print("Memuat klien inferensi Roboflow...")
+client = InferenceHTTPClient(
+    api_url="https://detect.roboflow.com",
+    api_key=API_KEY,
 )
-
-print("Model berhasil dimuat!")
+client.configure(InferenceConfiguration(api_key_transport="header"))
+print(f"Model ID: {MODEL_ID} siap digunakan.")
 print(
     f"\nMemulai inference untuk {len(image_paths)} gambar "
     f"(maksimal {NUM_IMAGES_TO_INFER} gambar pada proses ini)..."
 )
 
-box_annotator = sv.BoxAnnotator()
-label_annotator = sv.LabelAnnotator()
+
+def annotate_classification_image(
+    image: np.ndarray, top_class: str, confidence: float
+) -> np.ndarray:
+    """Menambahkan banner visual status klasifikasi di bagian atas citra."""
+    annotated = image.copy()
+    h, w = annotated.shape[:2]
+
+    # Skala proporsional ukuran banner & teks terhadap resolusi gambar
+    banner_height = max(40, int(h * 0.08))
+    font_scale = max(0.6, banner_height / 50.0)
+    thickness = max(1, int(font_scale * 2))
+
+    # Tentukan warna banner (BGR): Hijau untuk Fresh, Merah/Marun untuk Rotten
+    is_fresh = "fresh" in top_class.lower()
+    banner_color = (34, 180, 70) if is_fresh else (40, 40, 220)
+
+    # Buat banner dengan semi-transparansi
+    overlay = annotated.copy()
+    cv2.rectangle(overlay, (0, 0), (w, banner_height), banner_color, -1)
+    cv2.addWeighted(overlay, 0.85, annotated, 0.15, 0, annotated)
+
+    # Teks label
+    text = f"{top_class} ({confidence * 100:.1f}%)"
+    (text_w, text_h), baseline = cv2.getTextSize(
+        text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness
+    )
+    text_x = 15
+    text_y = int((banner_height + text_h) / 2)
+
+    cv2.putText(
+        annotated,
+        text,
+        (text_x, text_y),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        font_scale,
+        (255, 255, 255),
+        thickness,
+        cv2.LINE_AA,
+    )
+    return annotated
+
 
 # 3. Inferensi dan simpan hasil untuk tiap gambar
 for index, image_path in enumerate(image_paths, start=1):
@@ -78,38 +116,38 @@ for index, image_path in enumerate(image_paths, start=1):
         print("Gambar gagal dibaca OpenCV, dilewati.")
         continue
 
-    results = model.infer(str(image_path))
-    predictions = results[0]
-    detections = sv.Detections.from_inference(predictions)
-    labels = [
-        f"{prediction.class_name} {prediction.confidence:.2f}"
-        for prediction in predictions.predictions
-    ]
+    try:
+        results = client.infer(str(image_path), model_id=MODEL_ID)
+        predictions = results.get("predictions", {})
+        predicted_classes = results.get("predicted_classes", [])
 
-    annotated_image = box_annotator.annotate(
-        scene=image.copy(),
-        detections=detections
-    )
-    annotated_image = label_annotator.annotate(
-        scene=annotated_image,
-        detections=detections,
-        labels=labels
-    )
-
-    output_path = OUTPUT_DIR / f"{image_path.stem}_hasil{image_path.suffix}"
-    if not cv2.imwrite(str(output_path), annotated_image):
-        print(f"Gagal menyimpan hasil ke: {output_path}")
-        continue
-
-    if predictions.predictions:
-        for prediction in predictions.predictions:
-            print(
-                f"Kelas: {prediction.class_name} | "
-                f"Confidence: {prediction.confidence:.2%}"
+        if predicted_classes:
+            top_class = predicted_classes[0]
+            top_conf = predictions.get(top_class, {}).get("confidence", 0.0)
+        else:
+            # Fallback jika predicted_classes kosong, ambil conf tertinggi
+            sorted_preds = sorted(
+                predictions.items(),
+                key=lambda item: item[1].get("confidence", 0),
+                reverse=True,
             )
-    else:
-        print("Tidak ada objek mangga yang terdeteksi.")
+            top_class = sorted_preds[0][0] if sorted_preds else "Unknown"
+            top_conf = sorted_preds[0][1].get("confidence", 0.0) if sorted_preds else 0.0
 
-    print(f"Hasil disimpan di: {output_path}")
+        print(f"Hasil Klasifikasi: {top_class} ({top_conf * 100:.2f}%)")
+        for cls_name, cls_info in predictions.items():
+            conf = cls_info.get("confidence", 0.0)
+            print(f" - {cls_name}: {conf * 100:.2f}%")
 
-print("\nInference selesai.")
+        annotated_image = annotate_classification_image(image, top_class, top_conf)
+
+        output_path = OUTPUT_DIR / f"{image_path.stem}_hasil{image_path.suffix}"
+        if not cv2.imwrite(str(output_path), annotated_image):
+            print(f"Gagal menyimpan hasil ke: {output_path}")
+        else:
+            print(f"Hasil disimpan di: {output_path}")
+
+    except Exception as e:
+        print(f"Gagal melakukan inferensi pada {image_path.name}: {e}")
+
+print("\nProses selesai.")
