@@ -50,10 +50,10 @@ if not image_paths:
     raise SystemExit(0)
 
 if not API_KEY:
-    raise ValueError("ROBOFLOW_API_KEY belum terbaca!")
+    raise ValueError("ROBOFLOW_API_KEY belum terbaca di file .env!")
 
-# 2. Load model CARABAO
-print("Memuat model CARABAO...")
+# 2. Load model
+print("Memuat model CARABAO Ripeness Level...")
 
 model = get_model(
     model_id=MODEL_ID,
@@ -78,13 +78,17 @@ for index, image_path in enumerate(image_paths, start=1):
         print("Gambar gagal dibaca OpenCV, dilewati.")
         continue
 
-    results = model.infer(str(image_path))
+    results = model.infer(image, confidence=0.25)
     predictions = results[0]
     detections = sv.Detections.from_inference(predictions)
     labels = [
         f"{prediction.class_name} {prediction.confidence:.2f}"
         for prediction in predictions.predictions
     ]
+
+    print(f"Terdeteksi {len(predictions.predictions)} objek:")
+    for p in predictions.predictions:
+        print(f" - {p.class_name}: {p.confidence * 100:.1f}%")
 
     annotated_image = box_annotator.annotate(
         scene=image.copy(),
@@ -98,18 +102,8 @@ for index, image_path in enumerate(image_paths, start=1):
 
     output_path = OUTPUT_DIR / f"{image_path.stem}_hasil{image_path.suffix}"
     if not cv2.imwrite(str(output_path), annotated_image):
-        print(f"Gagal menyimpan hasil ke: {output_path}")
-        continue
-
-    if predictions.predictions:
-        for prediction in predictions.predictions:
-            print(
-                f"Kelas: {prediction.class_name} | "
-                f"Confidence: {prediction.confidence:.2%}"
-            )
+        print(f"Gagal menyimpan hasil anotasi ke: {output_path}")
     else:
-        print("Tidak ada objek mangga yang terdeteksi.")
+        print(f"Hasil disimpan di: {output_path}")
 
-    print(f"Hasil disimpan di: {output_path}")
-
-print("\nInference selesai.")
+print("\nProses inferensi selesai.")
