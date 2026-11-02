@@ -17,12 +17,5 @@ __pycache__/
 *.onnx
 .cache/
 
-# Temporary output
-hasil_deteksi.webp
-hasil_deteksi2.avif
-
-# Input kedua
-test2.avif
-
 # macOS
 .DS_Store
