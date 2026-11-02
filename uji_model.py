@@ -14,7 +14,7 @@ API_KEY = os.getenv("ROBOFLOW_API_KEY")
 MODEL_ID = "carabao-ripeness-level-0x9me/19"
 IMAGE_DIR = Path("images")
 NUM_IMAGES_TO_INFER = 2
-OUTPUT_DIR = Path("hasil_deteksi")
+OUTPUT_DIR = Path("results")
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
 if not IMAGE_DIR.is_dir():
