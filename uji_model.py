@@ -1,21 +1,30 @@
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
-
-load_dotenv()
-
 import cv2
 import supervision as sv
-from inference import get_model
+from ultralytics import YOLO
 
-# 1. Konfigurasi
-API_KEY = os.getenv("ROBOFLOW_API_KEY")
-MODEL_ID = "carabao-ripeness-level-0x9me/19"
+# 1. Konfigurasi Model Lokal (best_v2.pt)
+MODEL_CANDIDATES = [
+    Path("runs/detect/runs/mango/yolo11n_mango/weights/best_v2.pt"),
+    Path("runs/mango/yolo11n_mango/weights/best_v2.pt"),
+    Path("runs/mango/weights/best_v2.pt"),
+    Path("best_v2.pt"),
+    Path("runs/detect/runs/mango/yolo11n_mango/weights/best.pt"),
+]
+
+MODEL_PATH = next((p for p in MODEL_CANDIDATES if p.exists()), None)
 IMAGE_DIR = Path("images")
 NUM_IMAGES_TO_INFER = 5
 OUTPUT_DIR = Path("results")
 SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+
+if MODEL_PATH is None or not MODEL_PATH.exists():
+    raise FileNotFoundError(
+        "File model lokal (best_v2.pt) tidak ditemukan!\n"
+        "Pastikan file best_v2.pt sudah diletakkan di runs/ atau direktori proyek."
+    )
 
 if not IMAGE_DIR.is_dir():
     raise FileNotFoundError(f"Folder gambar tidak ditemukan: {IMAGE_DIR}")
@@ -46,21 +55,13 @@ for image_path in all_image_paths:
         break
 
 if not image_paths:
-    print("Semua gambar sudah memiliki hasil inference. Tidak ada yang diproses.")
-    raise SystemExit(0)
+    print("Semua gambar sudah memiliki hasil inference. Menjalankan ulang untuk seluruh gambar sampel...")
+    image_paths = all_image_paths[:NUM_IMAGES_TO_INFER]
 
-if not API_KEY:
-    raise ValueError("ROBOFLOW_API_KEY belum terbaca di file .env!")
-
-# 2. Load model
-print("Memuat model CARABAO Ripeness Level...")
-
-model = get_model(
-    model_id=MODEL_ID,
-    api_key=API_KEY
-)
-
-print("Model berhasil dimuat!")
+# 2. Load model lokal
+print(f"Memuat model lokal dari: {MODEL_PATH}")
+model = YOLO(str(MODEL_PATH))
+print(f"[OK] Model berhasil dimuat! Kelas: {model.names}")
 print(
     f"\nMemulai inference untuk {len(image_paths)} gambar "
     f"(maksimal {NUM_IMAGES_TO_INFER} gambar pada proses ini)..."
@@ -78,17 +79,25 @@ for index, image_path in enumerate(image_paths, start=1):
         print("Gambar gagal dibaca OpenCV, dilewati.")
         continue
 
-    results = model.infer(image, confidence=0.25)
-    predictions = results[0]
-    detections = sv.Detections.from_inference(predictions)
+    # Prediksi menggunakan Ultralytics YOLO lokal dengan NMS optimal
+    results = model.predict(
+        source=image,
+        conf=0.20,
+        iou=0.45,
+        agnostic_nms=True,
+        imgsz=640,
+        verbose=False,
+    )[0]
+    detections = sv.Detections.from_ultralytics(results)
+
     labels = [
-        f"{prediction.class_name} {prediction.confidence:.2f}"
-        for prediction in predictions.predictions
+        f"{model.names[cls_id]} {conf:.2f}"
+        for cls_id, conf in zip(detections.class_id, detections.confidence)
     ]
 
-    print(f"Terdeteksi {len(predictions.predictions)} objek:")
-    for p in predictions.predictions:
-        print(f" - {p.class_name}: {p.confidence * 100:.1f}%")
+    print(f"Terdeteksi {len(detections)} objek:")
+    for cls_id, conf in zip(detections.class_id, detections.confidence):
+        print(f" - {model.names[cls_id]}: {conf * 100:.1f}%")
 
     annotated_image = box_annotator.annotate(
         scene=image.copy(),

@@ -1,115 +1,111 @@
 # 🥭 Mango Ripeness Detection
 
-Proyek **Computer Vision untuk mendeteksi dan mengklasifikasikan tingkat kematangan buah mangga** menggunakan model pretrained CARABAO Ripeness Level yang dipublikasikan oleh MangoSort AI melalui Roboflow Universe (carabao-ripeness-level-0x9me/19).
+Proyek **Computer Vision untuk mendeteksi dan mengklasifikasikan tingkat kematangan buah mangga** (*Unripe*, *Partially Ripe*, *Ripe*) menggunakan model lokal **YOLOv11** (`best.pt`) berbasis arsitektur Object Detection Ultralytics.
 
-Model ini menggunakan arsitektur YOLOv11 (Object Detection) dengan tiga kelas tingkat kematangan: *Unripe* (mentah), *Partially Ripe* (setengah matang), dan *Ripe* (matang).
+Proyek ini telah dikembangkan agar dapat berjalan secara **100% lokal dan offline** tanpa memerlukan API key pihak ketiga untuk inferensi.
+
+---
 
 ## 📌 Gambaran Proyek
 
-Proyek ini bertujuan untuk mengimplementasikan model *object detection* dalam mengenali objek buah mangga sekaligus mengidentifikasi tingkat kematangannya berdasarkan citra digital.
+Proyek ini bertujuan untuk mengimplementasikan model *object detection* dalam mengenali objek buah mangga pada citra digital sekaligus mengidentifikasi tingkat kematangannya.
 
-Model menghasilkan prediksi lokasi objek (*bounding box*), label kelas kematangan, dan nilai *confidence score*.
+Model menghasilkan prediksi lokasi objek (*bounding box*), label kelas kematangan, dan nilai keyakinan (*confidence score*).
+
+---
 
 ## 🎯 Kelas Deteksi
 
-Model menyediakan tiga kelas tingkat kematangan:
+Model mengenali 3 kelas tingkat kematangan mangga:
 
-| Class | Description | Warna Badge |
-|---|---|---|
-| Unripe | Mangga mentah | Hijau (#4ade80) |
-| Partially Ripe | Mangga setengah matang | Oranye (#fb923c) |
-| Ripe | Mangga matang | Kuning Emas (#facc15) |
+| Indeks | Kelas | Deskripsi | Warna Badge |
+|:---:|---|---|---|
+| 0 | `Partially Ripe` | Mangga setengah matang | Oranye (`#fb923c`) |
+| 1 | `Ripe` | Mangga matang | Kuning Emas (`#facc15`) |
+| 2 | `Unripe` | Mangga mentah | Hijau (`#4ade80`) |
 
-## 🤖 Model Pretrained
+---
 
-Model yang digunakan dalam proyek ini:
+## 🤖 Model & Dataset
 
 | Informasi | Detail |
 |---|---|
-| Nama Model | CARABAO Ripeness Level |
-| Model ID | carabao-ripeness-level-0x9me/19 |
-| Arsitektur | YOLOv11 |
-| Tugas | Object Detection |
-| Platform | Roboflow Universe |
-| Publisher | MangoSort AI |
+| **Model Bobot** | `runs/detect/runs/mango/yolo11n_mango/weights/best_v2.pt` |
+| **Arsitektur Dasar** | YOLO11 Nano (`yolo11n.pt`) |
+| **Tugas** | Object Detection |
+| **Framework** | Ultralytics YOLO & Supervision |
+| **Dataset Sumber** | Carabao Ripeness Level v19 (582 train, 191 valid, 191 test) |
 
-**Sumber Model:** [CARABAO Ripeness Level Model > Overview – Roboflow Universe](https://universe.roboflow.com/mangosort-ai/carabao-ripeness-level-0x9me)
+---
 
 ## 🛠️ Teknologi yang Digunakan
 
-| Teknologi | Kegunaan |
-|---|---|
-| Python 3.12 | Bahasa pemrograman utama |
-| Roboflow Inference | Memuat dan menjalankan model pretrained secara lokal |
-| Supervision | Menggambar anotasi bounding box dan label pada citra |
-| python-dotenv | Membaca konfigurasi API Key dari file .env |
-| OpenCV | Membaca, memproses, dan menyimpan gambar |
-| Streamlit | Antarmuka dashboard web interaktif |
+* **Python 3.12**
+* **Ultralytics YOLO** : Pelatihan model dan inferensi lokal
+* **Supervision** : Visualisasi dan annotator bounding box
+* **OpenCV & Pillow** : Pemrosesan dan manipulasi citra
+* **Streamlit** : Antarmuka dashboard web interaktif
+
+---
 
 ## 📂 Struktur Proyek
 
-`	ext
+```text
 Mango-Ripeness-Detection/
 │
 ├── .streamlit/
-│   └── config.toml       # Konfigurasi batas upload file Streamlit (5MB)
-├── app.py                # Dashboard web interaktif (Streamlit)
-├── cek_model.py          # Memeriksa koneksi dan memuat model pretrained
-├── uji_model.py          # Menjalankan deteksi batch citra mangga
-├── images/               # Gambar input untuk inference
-├── results/              # Hasil visualisasi deteksi anotasi
-├── requirements.txt      # Daftar dependensi Python
-├── README.md             # Dokumentasi proyek
-├── .gitignore            # Daftar file yang diabaikan Git
-└── test.webp             # Contoh gambar untuk pengujian
-`
+│   └── config.toml           # Konfigurasi batas upload file Streamlit (5MB)
+├── datasets/                 # Dataset pelatihan YOLOv11
+│   ├── train/ (images, labels)
+│   ├── valid/ (images, labels)
+│   ├── test/  (images, labels)
+│   └── data.yaml             # Konfigurasi kelas dan path dataset
+├── images/                   # Gambar sampel untuk pengujian inferensi
+├── results/                  # Hasil output visualisasi deteksi bounding box
+├── runs/                     # Hasil pelatihan lokal (termasuk weights/best_v2.pt)
+├── train.py                  # Skrip pelatihan model YOLO11 (lokal CPU)
+├── train_colab.ipynb         # Notebook pelatihan YOLO11 di Google Colab (GPU T4)
+├── cek_model.py              # Memeriksa ketersediaan bobot model lokal best_v2.pt
+├── uji_model.py              # Menjalankan deteksi batch pada gambar di folder images/
+├── app.py                    # Web dashboard interaktif (Streamlit)
+├── requirements.txt          # Daftar dependensi Python
+└── README.md                 # Dokumentasi proyek
+```
 
-## ⚙️ Instalasi dan Konfigurasi
+---
 
-### 1. Clone Repository
+## 🚀 Cara Menjalankan
 
-`ash
-git clone https://github.com/aqillazhr/Mango-Ripeness-Detection.git
-cd Mango-Ripeness-Detection
-`
+### 1. (Opsional) Melatih Model Ulang
+* **Melalui Google Colab (Direkomendasikan - GPU T4, ~5-10 menit):**  
+  Buka file [train_colab.ipynb](train_colab.ipynb) di Google Colab, jalankan semua cell, lalu unduh `best.pt`.
+* **Melalui Laptop Lokal (CPU):**
+  ```powershell
+  python train.py
+  ```
+*File bobot terbaik akan disimpan otomatis di folder `runs/`.*
 
-### 2. Konfigurasi Lingkungan
-
-Pastikan dependensi telah terinstal dan file .env telah disiapkan:
-
-`env
-ROBOFLOW_API_KEY=your_roboflow_api_key_here
-`
-
-## 🚀 Menjalankan Aplikasi
-
-### 1. Memeriksa Ketersediaan Model
-
-`ash
+### 2. Memeriksa Ketersediaan Model
+Untuk memastikan file `best_v2.pt` terbaca dan siap:
+```powershell
 python cek_model.py
-`
+```
 
-### 2. Pengujian Batch Gambar
-
-`ash
+### 3. Pengujian Deteksi Batch (Citra Lokal)
+Menguji model terhadap sampel citra mangga di dalam folder `images/`:
+```powershell
 python uji_model.py
-`
+```
+*Hasil anotasi gambar akan disimpan ke folder `results/`.*
 
-### 3. Menjalankan Dashboard Web Streamlit
-
-`ash
+### 4. Menjalankan Dashboard Web (Streamlit)
+Membuka aplikasi web interaktif di peramban (browser):
+```powershell
 streamlit run app.py
-`
+```
 
 Fitur dashboard:
-- Sidebar informasi model, jenis tugas, dataset link, daftar kelas, dan threshold keyakinan.
-- Unggah hingga 5 berkas citra sekaligus (JPG, JPEG, PNG, WebP hingga 5MB per berkas).
-- Visualisasi bounding box proporsional dengan label kematangan.
-- Ringkasan status dominan kematangan dan kartu detail per objek mangga.
-
-## 📚 Referensi
-
-- [CARABAO Ripeness Level – Roboflow Universe](https://universe.roboflow.com/mangosort-ai/carabao-ripeness-level-0x9me)
-- [Roboflow Inference Documentation](https://inference.roboflow.com/)
-- [Supervision Documentation](https://supervision.roboflow.com/)
-- [Streamlit Documentation](https://docs.streamlit.io/)
+* **Deteksi Offline**: Berjalan sepenuhnya menggunakan model lokal `best.pt`.
+* **Multi-upload**: Unggah hingga 5 gambar sekaligus (JPG, PNG, WebP hingga 5MB).
+* **Slider Threshold**: Atur confidence threshold (0.05 - 1.00) secara fleksibel.
+* **Analisis Kematangan**: Ringkasan dominan tingkat kematangan dan kartu detail per buah.
