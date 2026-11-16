@@ -1,24 +1,30 @@
 import os
 import io
+from pathlib import Path
 import cv2
 import numpy as np
 from PIL import Image
 import streamlit as st
 import supervision as sv
-from dotenv import load_dotenv
-from inference import get_model
+from ultralytics import YOLO
 
-# Model Pretrained CARABAO Ripeness Level (Object Detection YOLOv11)
-MODEL_ID = "carabao-ripeness-level-0x9me/19"
+# Konfigurasi Model Lokal (best_v2.pt)
+MODEL_CANDIDATES = [
+    Path("runs/detect/runs/mango/yolo11n_mango/weights/best_v2.pt"),
+    Path("runs/mango/yolo11n_mango/weights/best_v2.pt"),
+    Path("runs/mango/weights/best_v2.pt"),
+    Path("best_v2.pt"),
+    Path("runs/detect/runs/mango/yolo11n_mango/weights/best.pt"),
+]
+
+MODEL_PATH = next((p for p in MODEL_CANDIDATES if p.exists()), None)
 MAX_IMAGES = 5
 MAX_DISPLAY_WIDTH = 520
 MAX_FILE_SIZE_MB = 5
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
-load_dotenv()
-
 st.set_page_config(
-    page_title="Mango Ripeness Detection",
+    page_title="Mango Ripeness Detection (Local YOLO11)",
     page_icon="🥭",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -133,11 +139,8 @@ st.markdown(
 
 
 @st.cache_resource(show_spinner=False)
-def load_detection_model():
-    api_key = os.getenv("ROBOFLOW_API_KEY")
-    if not api_key:
-        return None
-    return get_model(model_id=MODEL_ID, api_key=api_key)
+def load_detection_model(model_path: str):
+    return YOLO(model_path)
 
 
 def resize_for_display(image: np.ndarray, max_width: int = MAX_DISPLAY_WIDTH) -> np.ndarray:
@@ -153,44 +156,61 @@ st.markdown(
     """
     <div class="header-container">
         <h1 class="title-text">Mango Ripeness Detection</h1>
-        <p class="subtitle-text">Deteksi dan klasifikasi tingkat kematangan mangga (Unripe, Partially Ripe, Ripe) — maksimal 5 gambar.</p>
+        <p class="subtitle-text">Deteksi dan klasifikasi tingkat kematangan mangga (Unripe, Partially Ripe, Ripe) — Model Lokal YOLOv11.</p>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-api_key = os.getenv("ROBOFLOW_API_KEY")
-if not api_key:
-    st.error("Variabel ROBOFLOW_API_KEY tidak ditemukan di file .env")
+if MODEL_PATH is None or not MODEL_PATH.exists():
+    st.error(
+        "❌ **File model lokal (`best_v2.pt`) tidak ditemukan!**\n\n"
+        "Pastikan file `best_v2.pt` telah diletakkan di direktori `runs/` atau folder proyek."
+    )
     st.stop()
 
-with st.spinner("Memuat model CARABAO Ripeness Level..."):
-    model = load_detection_model()
-
-if model is None:
-    st.error("Gagal memuat model Roboflow.")
-    st.stop()
+with st.spinner("Memuat model YOLO lokal (best_v2.pt)..."):
+    try:
+        model = load_detection_model(str(MODEL_PATH))
+    except Exception as e:
+        st.error(f"Gagal memuat model lokal: {e}")
+        st.stop()
 
 with st.sidebar:
     st.subheader("⚙️ Informasi & Pengaturan")
     st.markdown(
         f"""
-        **Model ID:** `{MODEL_ID}`  
+        **Model:** `Local YOLO11 ({MODEL_PATH.name})`  
+        **Path:** `{MODEL_PATH}`  
         **Tipe:** *Object Detection (YOLOv11)*  
-        **Dataset:** [mangosort-ai/carabao-ripeness-level-0x9me](https://universe.roboflow.com/mangosort-ai/carabao-ripeness-level-0x9me)  
-        **Kelas:** `Unripe` , `Partially Ripe` , `Ripe`
+        **Kelas:** `Partially Ripe` , `Ripe` , `Unripe`  
+        **Status:** 🟢 *Model Lokal Siap (Offline)*
         """
     )
     st.markdown("---")
+    st.markdown("##### 🎛️ Pengaturan Deteksi")
     conf_threshold = st.slider(
         "Threshold Keyakinan (Confidence)",
         min_value=0.05,
         max_value=1.00,
         value=0.20,
         step=0.05,
-        help="Batas minimal keyakinan deteksi. Turunkan nilai ini jika ada mangga yang belum terdeteksi.",
+        help="Batas minimal keyakinan deteksi. Turunkan nilai ini (misal 0.15) jika ada mangga yang terlewat.",
     )
-    st.caption("ℹ️ *Tips: Nilai 0.15 - 0.30 membantu mendeteksi mangga yang tertutup dedaunan atau terkena pantulan cahaya.*")
+    iou_threshold = st.slider(
+        "Threshold NMS (IoU)",
+        min_value=0.10,
+        max_value=0.90,
+        value=0.45,
+        step=0.05,
+        help="Mengatasi kotak ganda (duplikat). Semakin kecil nilainya, semakin agresif menghapus kotak bertumpuk pada 1 mangga.",
+    )
+    agnostic_nms = st.toggle(
+        "Hapus Kotak Ganda Antar-Kelas (Agnostic NMS)",
+        value=True,
+        help="Mencegah 1 mangga memiliki 2 bounding box berbeda kelas secara bersamaan.",
+    )
+    st.caption("ℹ️ *Tips: Jika ada mangga terlewat, turunkan Confidence ke 0.15. Jika 1 mangga punya 2 kotak, aktifkan Agnostic NMS dan setel IoU ke 0.40 - 0.45.*")
 
 uploaded_files = st.file_uploader(
     f"Unggah citra mangga (maksimal {MAX_IMAGES} berkas)",
@@ -231,13 +251,19 @@ if uploaded_files:
 
         with st.spinner(f"Memproses gambar {idx}/{len(target_files)}: {uploaded_file.name}..."):
             try:
-                results = model.infer(cv_img, confidence=conf_threshold)
-                predictions_data = results[0]
-                detections = sv.Detections.from_inference(predictions_data)
+                results = model.predict(
+                    source=cv_img,
+                    conf=conf_threshold,
+                    iou=iou_threshold,
+                    agnostic_nms=agnostic_nms,
+                    imgsz=640,
+                    verbose=False,
+                )[0]
+                detections = sv.Detections.from_ultralytics(results)
 
                 labels = [
-                    f"{pred.class_name} {pred.confidence:.2f}"
-                    for pred in predictions_data.predictions
+                    f"{model.names[cls_id]} {conf:.2f}"
+                    for cls_id, conf in zip(detections.class_id, detections.confidence)
                 ]
 
                 annotated = box_annotator.annotate(scene=cv_img.copy(), detections=detections)
@@ -258,27 +284,35 @@ if uploaded_files:
             st.image(annotated_rgb, use_container_width=False)
 
         with col_preds:
-            preds = predictions_data.predictions
+            preds = [
+                {
+                    "class_name": model.names[cls_id],
+                    "confidence": float(conf),
+                }
+                for cls_id, conf in zip(detections.class_id, detections.confidence)
+            ]
+
             if not preds:
                 st.info("Tidak ada objek mangga yang terdeteksi dengan threshold keyakinan saat ini.")
             else:
                 # Hitung ringkasan kelas
                 classes_count = {}
                 for p in preds:
-                    classes_count[p.class_name] = classes_count.get(p.class_name, 0) + 1
+                    cname = p["class_name"]
+                    classes_count[cname] = classes_count.get(cname, 0) + 1
 
                 dominant_class = max(classes_count, key=classes_count.get)
                 dom_lower = dominant_class.lower()
 
                 if "un" in dom_lower:
                     status_style = "status-unripe"
-                    desc = f"✅ Terdeteksi <strong>{len(preds)} objek mangga</strong>. Mayoritas berada pada tingkat <strong>Unripe (Mentah)</strong>."
+                    desc = f"Terdeteksi <strong>{len(preds)} objek mangga</strong>. Mayoritas berada pada tingkat <strong>Unripe (Mentah)</strong>."
                 elif "semi" in dom_lower or "partially" in dom_lower:
                     status_style = "status-partially-ripe"
-                    desc = f"🍊 Terdeteksi <strong>{len(preds)} objek mangga</strong>. Mayoritas berada pada tingkat <strong>Partially Ripe (Setengah Matang)</strong>."
+                    desc = f"Terdeteksi <strong>{len(preds)} objek mangga</strong>. Mayoritas berada pada tingkat <strong>Partially Ripe (Setengah Matang)</strong>."
                 else:
                     status_style = "status-ripe"
-                    desc = f"🥭 Terdeteksi <strong>{len(preds)} objek mangga</strong>. Mayoritas berada pada tingkat <strong>Ripe (Matang)</strong>."
+                    desc = f"Terdeteksi <strong>{len(preds)} objek mangga</strong>. Mayoritas berada pada tingkat <strong>Ripe (Matang)</strong>."
 
                 st.markdown(
                     f"""
@@ -292,10 +326,13 @@ if uploaded_files:
                 st.caption(f"Daftar Objek Terdeteksi ({len(preds)} buah):")
 
                 # Urutkan berdasarkan confidence tertinggi
-                sorted_preds = sorted(preds, key=lambda x: x.confidence, reverse=True)
+                sorted_preds = sorted(preds, key=lambda x: x["confidence"], reverse=True)
 
                 for p_idx, p in enumerate(sorted_preds, start=1):
-                    cls_lower = p.class_name.lower()
+                    cls_name = p["class_name"]
+                    conf_val = p["confidence"]
+                    cls_lower = cls_name.lower()
+
                     if "un" in cls_lower:
                         badge_class = "badge-unripe"
                     elif "semi" in cls_lower or "partially" in cls_lower:
@@ -305,13 +342,13 @@ if uploaded_files:
                     else:
                         badge_class = "badge-unripe"
 
-                    conf_percent = p.confidence * 100
+                    conf_percent = conf_val * 100
                     st.markdown(
                         f"""
                         <div class="prediction-card">
                             <div>
-                                <span class="pred-class">#{p_idx} {p.class_name}</span>
-                                <span class="{badge_class}">{p.class_name}</span>
+                                <span class="pred-class">#{p_idx} {cls_name}</span>
+                                <span class="{badge_class}">{cls_name}</span>
                             </div>
                             <div style="text-align: right;">
                                 <span class="confidence-val">{conf_percent:.1f}%</span>
@@ -320,7 +357,7 @@ if uploaded_files:
                         """,
                         unsafe_allow_html=True,
                     )
-                    st.progress(min(max(float(p.confidence), 0.0), 1.0))
+                    st.progress(min(max(float(conf_val), 0.0), 1.0))
 
         st.markdown(
             "<hr style='border: none; border-top: 1px solid #1e293b; margin: 1.5rem 0;'>",
